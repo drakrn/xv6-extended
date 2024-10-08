@@ -442,3 +442,50 @@ sys_pipe(void)
   fd[1] = fd1;
   return 0;
 }
+
+int 
+sys_lseek(void)
+{
+  int fd, offset, whence;
+  struct file *f;
+  struct inode *ip;
+  int new_offset = 0;
+
+  // Extract arguments
+  if (argint(0, &fd) < 0 || argint(1, &offset) < 0 || argint(2, &whence) < 0)
+    return -1;
+  
+  // Get file structure
+  if ((f = myproc()->ofile[fd]) == 0)
+    return -1;
+  
+  // Only accept regular files, not pipes
+  if (f->type != FD_INODE)
+    return -1;
+
+  ip = f->ip;
+
+  // Seek logic based on 'whence'
+  switch(whence){
+    case 0x0:
+      new_offset = offset;
+      break;
+    case 0x1:
+      new_offset = f->off + offset;
+      break;
+    case 0x2:
+      new_offset = ip->size + offset;
+      break;
+    default:
+      return -1;
+  }
+
+  // Ensure new_offset is within bounds
+  if (new_offset < 0 || new_offset > ip->size)
+    return -1;
+  
+  // Set the new offset
+  f->off = new_offset;
+
+  return new_offset;
+}
